@@ -24,6 +24,7 @@ module Api
       end
 
       def create
+        @ordered_food = Food.find(params[:food_id])
         # 他店舗での仮注文がすでにあるかの条件分岐
         if LineFood.active.other_restaurant(@ordered_food.restaurant.id).exists?
           return render json: {
@@ -31,9 +32,9 @@ module Api
             new_restaurant: Food.find(params[:food_id]).restaurant.name,
           }, status: :not_acceptable
         end
+
         #privateのメソッドで処理
         set_line_food(@ordered_food)
-
         # 更新or新規で準備した値を保存する
         if @line_food.save
           render json: {
@@ -43,8 +44,10 @@ module Api
           render json: {}, status: :internal_server_error
         end
       end
-      
+
       def replace
+        @ordered_food = Food.find(params[:food_id])
+        # 古い仮注文を無効にして、新しいものに置き換える
         LineFood.active.other_restaurant(@ordered_food.restaurant.id).each do |line_food|
           line_food.update_attribute(:active, false)
         end
@@ -61,10 +64,6 @@ module Api
       end
 
       private
-
-      def set_food
-        @ordered_food = Food.find(params[:food_id])
-      end
 
       def set_line_food(ordered_food)
         # 既に存在する場合
