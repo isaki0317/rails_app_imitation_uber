@@ -1,22 +1,27 @@
 module Api
   module V1
     class LineFoodsController < ApplicationController
-      # onlyの前にのみset_foodを実行可能
-      before_action :set_food, only: %i[create, replace]
 
       def index
         # scopeで選択して取得
         line_foods = LineFood.active.all
         # 仮注文が空でもアクセスできるため、条件分岐で処理
         if line_foods.exists?
+          line_food_ids = []
+          count = 0
+          amount = 0
+
+          line_foods.each do |line_food|
+            line_food_ids << line_food.id # (1) idを参照して配列に追加する
+            count += line_food[:count] # (2)countのデータを合算する
+            amount += line_food.total_amount # (3)total_amountを合算する
+          end
+
           render json: {
-            # idを取得して返す
-            line_food_ids: line_foods.map { |line_food| line_food.id },
-            # 仮注文は一店舗までなので、配列の最初の商品から店名を取得(.first.restaurantと同義)
+            line_food_ids: line_food_ids,
             restaurant: line_foods[0].restaurant,
-            count: line_foods.sum { |line_food| line_food[:count] },
-            # インスタンスメソッドで計算して返す(数量x単価)
-            amount: line_foods.sum { |line_food| line_food.total_amount },
+            count: count,
+            amount: amount,
           }, status: :ok
         else
           render json: {}, status: :no_content
